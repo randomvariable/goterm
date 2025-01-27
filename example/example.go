@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/google/goterm/term"
+	"github.com/randomvariable/goterm/term"
 )
 
 // Constants for IO and greeting.
@@ -25,7 +25,11 @@ const (
 // A version of the UNIX command "script" with no errchecking buffered IO or cool features
 func main() {
 	// Get PTYs up
-	pty, _ := term.OpenPTY()
+	pty, err := term.OpenPTY()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	defer pty.Close()
 	// Save the current Stdin attributes
 	backupTerm, _ := term.Attr(os.Stdin)
@@ -43,14 +47,15 @@ func main() {
 	// Handle changes in termsize
 	sig := make(chan os.Signal, 2)
 	// Notify if window size changes or shell dies
-	signal.Notify(sig, syscall.SIGWINCH, syscall.SIGCLD)
+	signal.Notify(sig, syscall.SIGWINCH)
 	// Start up the slaveshell
 	cmd := exec.Command(os.Getenv("SHELL"), "")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = pty.Slave, pty.Slave, pty.Slave
 	cmd.Args = nil
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid:  true,
-		Setctty: true}
+		Setctty: true,
+	}
 	cmd.Start()
 	// Get the initial winsize
 	myTerm.Winsz(os.Stdin)
@@ -83,7 +88,7 @@ func Snoop(pty *term.PTY) {
 
 // reader reads from master and writes to file and stdout
 func reader(master *os.File, log *os.File) {
-	var buf = make([]byte, bufSz)
+	buf := make([]byte, bufSz)
 	defer func() {
 		log.Sync()
 		log.Close()
@@ -97,7 +102,7 @@ func reader(master *os.File, log *os.File) {
 
 // writer reads from stdin and writes to master
 func writer(master *os.File) {
-	var buf = make([]byte, bufSz)
+	buf := make([]byte, bufSz)
 	for {
 		nr, _ := os.Stdin.Read(buf)
 		master.Write(buf[:nr])

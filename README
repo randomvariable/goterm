@@ -14,8 +14,8 @@ package main
 
 import (
   "fmt"
-  
-  "github.com/google/goterm/term"
+
+  "github.com/randomvariable/gotermterm"
 )
 
 func main() {
