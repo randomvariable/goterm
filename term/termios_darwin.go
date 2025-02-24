@@ -3,7 +3,6 @@ package term
 import (
 	"errors"
 	"os"
-	"strconv"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -11,8 +10,6 @@ import (
 
 // IOCTL terminal stuff.
 const (
-	TCGETS       = 0x5401     // TCGETS get terminal attributes
-	TCSETS       = 0x5402     // TCSETS set terminal attributes
 	TIOCGWINSZ   = 0x5413     // TIOCGWINSZ used to get the terminal window size
 	TIOCSWINSZ   = 0x5414     // TIOCSWINSZ used to set the terminal window size
 	TIOCGPTN     = 0x80045430 // TIOCGPTN IOCTL used to get the PTY number
@@ -59,7 +56,7 @@ func _IO(group byte, ioctl_num uintptr) uintptr {
 // Set Sets terminal t attributes on file.
 func (t *Termios) Set(file *os.File) error {
 	fd := file.Fd()
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(TCSETS), uintptr(unsafe.Pointer(t)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TIOCSETA), uintptr(unsafe.Pointer(t)))
 	if errno != 0 {
 		return errno
 	}
@@ -70,7 +67,7 @@ func (t *Termios) Set(file *os.File) error {
 func Attr(file *os.File) (Termios, error) {
 	var t Termios
 	fd := file.Fd()
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(TCGETS), uintptr(unsafe.Pointer(&t)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TIOCGETA), uintptr(unsafe.Pointer(&t)))
 	if errno != 0 {
 		return t, errno
 	}
@@ -260,11 +257,11 @@ func (p *PTY) Close() error {
 
 // PTSName return the name of the pty.
 func (p *PTY) PTSName() (string, error) {
-	n, err := p.PTSNumber()
+	n, err := ptsname(p.Master)
 	if err != nil {
 		return "", err
 	}
-	return "/dev/pts/" + strconv.Itoa(int(n)), nil
+	return n, nil
 }
 
 // PTSNumber return the pty number.
